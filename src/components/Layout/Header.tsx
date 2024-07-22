@@ -23,8 +23,8 @@ import logoDarkShort from "/Logo-dark-short.svg";
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard' },
-  { href: '/alarms', label: 'Alarms' },
-  { href: '/assets', label: 'Assets' },
+  // { href: '/alarms', label: 'Alarms' },
+  // { href: '/assets', label: 'Assets' },
 ];
 
 const Header: React.FC = () => {

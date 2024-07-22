@@ -1,0 +1,29 @@
+
+/* Style the container div of Mapbox Draw controls */
+.mapboxgl-ctrl-top-right {
+    top: 10px; /* Adjust position */
+    right: 10px; /* Adjust position */
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+    border-radius: 8px; /* Rounded corners */
+    padding: 10px; /* Padding around controls */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Add shadow for better visibility */
+  }
+  
+  /* Style the individual draw control buttons */
+  .mapbox-gl-draw_ctrl-draw-btn {
+    width: 40px; /* Adjust button size */
+    height: 40px; /* Adjust button size */
+    margin: 5px; /* Space between buttons */
+    border-radius: 8px; /* Rounded corners */
+    background-color: #fff; /* White background */
+    border: 2px solid #ccc; /* Border for buttons */
+  }
+  
+  /* Change the hover effect for buttons */
+  .mapbox-gl-draw_ctrl-draw-btn:hover {
+    background-color: #f0f0f0; /* Light grey background on hover */
+    border-color: #888; /* Darker border on hover */
+  }

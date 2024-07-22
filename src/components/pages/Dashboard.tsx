@@ -2,6 +2,7 @@ import React from 'react';
 import { Link as ScrollLink, Element } from 'react-scroll';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Map from '../Dashboard/Map'
 
 const Dashboard: React.FC = () => {
   return (
@@ -34,7 +35,7 @@ const Dashboard: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2 bg-secondary h-96 flex items-center justify-center">
-                Map Placeholder
+               <Map drawingEnabled={false} searchEnabled={true} equipmentDrawingEnabled={false}/>
               </div>
               <div className="space-y-4">
                 <Card>
