@@ -1,125 +1,140 @@
-import React from 'react';
-import { Link as ScrollLink, Element } from 'react-scroll';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Map from '../Dashboard/Map'
+import Map from '../Dashboard/Map';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const emissionsData = [
+  { name: 'Jan', value: 4000 },
+  { name: 'Feb', value: 3000 },
+  { name: 'Mar', value: 2000 },
+  { name: 'Apr', value: 2780 },
+  { name: 'May', value: 1890 },
+  { name: 'Jun', value: 2390 },
+];
+
+const trendsData = [
+  { name: 'Week 1', value: 2400 },
+  { name: 'Week 2', value: 1398 },
+  { name: 'Week 3', value: 9800 },
+  { name: 'Week 4', value: 3908 },
+];
 
 const Dashboard: React.FC = () => {
+  const [activeChart, setActiveChart] = useState<'emissions' | 'trends'>('emissions');
+
   return (
     <div className="container mx-auto p-4">
-      <nav className="mb-8">
-        <ul className="flex space-x-4">
-          <li>
-            <ScrollLink to="operations" smooth={true} duration={500}>
-              <Button variant="ghost">Operations</Button>
-            </ScrollLink>
-          </li>
-          <li>
-            <ScrollLink to="statistics" smooth={true} duration={500}>
-              <Button variant="ghost">Statistics</Button>
-            </ScrollLink>
-          </li>
-          <li>
-            <ScrollLink to="alarms" smooth={true} duration={500}>
-              <Button variant="ghost">Alarms</Button>
-            </ScrollLink>
-          </li>
-        </ul>
-      </nav>
-
-      <Element name="operations" className="mb-16">
-        <Card>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Operations</CardTitle>
+            <CardTitle>Methane Stats</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2 bg-secondary h-96 flex items-center justify-center">
-               <Map drawingEnabled={false} searchEnabled={true} equipmentDrawingEnabled={false}/>
+            <div className="flex justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Emissions</p>
+                <p className="text-2xl font-bold">1000 kg</p>
               </div>
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Methane Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Total Emissions: 1000 kg</p>
-                    <p>Peak Concentration: 5 ppm</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Map Legend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul>
-                      <li>Red: High Concentration</li>
-                      <li>Yellow: Medium Concentration</li>
-                      <li>Green: Low Concentration</li>
-                    </ul>
-                  </CardContent>
-                </Card>
+              <div>
+                <p className="text-sm text-muted-foreground">Peak Concentration</p>
+                <p className="text-2xl font-bold">5 ppm</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </Element>
-
-      <Element name="statistics" className="mb-16">
-        <Card>
+        <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Statistics</CardTitle>
+            <CardTitle>Map Legend</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Emissions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 bg-secondary flex items-center justify-center">
-                    Chart Placeholder
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 bg-secondary flex items-center justify-center">
-                    Chart Placeholder
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <ul className="flex justify-between">
+              <li className="flex items-center">
+                <span className="w-3 h-3 bg-red-500 mr-2 rounded-full"></span>
+                <span>High</span>
+              </li>
+              <li className="flex items-center">
+                <span className="w-3 h-3 bg-yellow-500 mr-2 rounded-full"></span>
+                <span>Medium</span>
+              </li>
+              <li className="flex items-center">
+                <span className="w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
+                <span>Low</span>
+              </li>
+            </ul>
           </CardContent>
         </Card>
-      </Element>
-
-      <Element name="alarms" className="mb-16">
-        <Card>
+        <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Alarms</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              <li className="flex justify-between items-center bg-red-100 p-2 rounded">
-                <span>High Methane Concentration Detected</span>
-                <span className="text-sm text-gray-500">2 hours ago</span>
+              <li className="flex items-center">
+                <span className="w-3 h-3 bg-red-500 mr-2 rounded-full"></span>
+                <span className="text-sm">High Methane Concentration</span>
               </li>
-              <li className="flex justify-between items-center bg-yellow-100 p-2 rounded">
-                <span>Equipment Malfunction Warning</span>
-                <span className="text-sm text-gray-500">1 day ago</span>
-              </li>
-              <li className="flex justify-between items-center bg-green-100 p-2 rounded">
-                <span>Scheduled Maintenance Reminder</span>
-                <span className="text-sm text-gray-500">3 days ago</span>
+              <li className="flex items-center">
+                <span className="w-3 h-3 bg-yellow-500 mr-2 rounded-full"></span>
+                <span className="text-sm">Equipment Malfunction</span>
               </li>
             </ul>
           </CardContent>
         </Card>
-      </Element>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="col-span-1">
+          <CardContent className="p-0">
+            <Map drawingEnabled={false} searchEnabled={true} equipmentDrawingEnabled={false}/>
+          </CardContent>
+        </Card>
+        <div className="col-span-1 space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Statistics</CardTitle>
+              <div>
+                <Button 
+                  variant={activeChart === 'emissions' ? 'default' : 'outline'}
+                  onClick={() => setActiveChart('emissions')}
+                  className="mr-2"
+                >
+                  Emissions
+                </Button>
+                <Button 
+                  variant={activeChart === 'trends' ? 'default' : 'outline'}
+                  onClick={() => setActiveChart('trends')}
+                >
+                  Trends
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {activeChart === 'emissions' ? (
+                  <LineChart data={emissionsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  </LineChart>
+                ) : (
+                  <LineChart data={trendsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="value" stroke="#82ca9d" activeDot={{ r: 8 }} />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };
