@@ -6,6 +6,7 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import * as turf from '@turf/turf';
 import '../../mapbox-custom.css';
 import { Button } from "@/components/ui/button"
+import ControlsDropdown from "./ControlsDropdown";
 import { Input } from "@/components/ui/input"
 import {
     DropdownMenu,
@@ -46,24 +47,36 @@ interface MapProps {
     drawingEnabled: boolean;
     searchEnabled: boolean;
     equipmentDrawingEnabled: boolean;
+    sensorEnabled: boolean;
     onBoundaryChange?: (boundary: GeoJSON.Feature | null) => void;
     onEquipmentConfirm?: (equipment: Array<{ equipment: EquipmentType, polygon: GeoJSON.Feature }>) => void;
     initialBoundary?: GeoJSON.Feature | null;
   }
 
+  const mapStyles = [
+    { name: 'Satellite', url: 'mapbox://styles/mapbox/satellite-v9' },
+    { name: 'Streets', url: 'mapbox://styles/mapbox/streets-v11' },
+    { name: 'Light', url: 'mapbox://styles/mapbox/light-v10' },
+    { name: 'Dark', url: 'mapbox://styles/mapbox/dark-v10' },
+  ];
+
+
+//#region Begin Component -----------------------------------------------------------------------------
 const Map: React.FC<MapProps> = ({
     drawingEnabled, 
     searchEnabled, 
     equipmentDrawingEnabled,
+    sensorEnabled,
     onBoundaryChange,
     onEquipmentConfirm,
-    initialBoundary
+    initialBoundary,
 }) => {
-
-    const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const [mapStyle, setMapStyle] = useState(mapStyles[0].url);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<mapboxgl.Map | null>(null);
     const drawRef = useRef<MapboxDraw | null>(null);
+    const barrierDrawRef = useRef<MapboxDraw | null>(null);
+    const equipmentDrawRef = useRef<MapboxDraw | null>(null);
     const [state, setState] = useState(false);
     const [lat, setLat] = useState('');
     const [lng, setLng] = useState('');
@@ -74,6 +87,8 @@ const Map: React.FC<MapProps> = ({
     const [currentBoundary, setCurrentBoundary] = useState<GeoJSON.Feature | null>(null);
     const [isBoundaryConfirmed, setIsBoundaryConfirmed] = useState(false);
     const [isEquipmentConfirmed, setIsEquipmentConfirmed] = useState(false);
+    const [points, setPoints] = useState<GeoJSON.Feature[]>([]);
+    const [pointPlacementMode, setPointPlacementMode] = useState(false);
 
     const satView = () => {
         setState(!state);
@@ -83,60 +98,120 @@ const Map: React.FC<MapProps> = ({
         }
     };
 
+    const [viewState, setViewState] = useState({
+      longitude: -102.099118,
+      latitude: 31.97298,
+      zoom: 9,
+      bearing: 0,
+      pitch: 0
+    });
+
+    // change the map style
+   const changeMapStyle = (styleUrl: string) => {
+    setMapStyle(styleUrl);
+    if (mapRef.current) {
+      mapRef.current.setStyle(styleUrl);
+    }
+  };
+
     const searchLocation = () => {
-        if (mapRef.current) {
-            const latitude = parseFloat(lat);
-            const longitude = parseFloat(lng);
-            if (!isNaN(latitude) && !isNaN(longitude)) {
-                mapRef.current.flyTo({
-                    center: [longitude, latitude],
-                    essential: true,
-                    zoom: 17
-                });
-                setSearchPerformed(true);
-            }
+    if (mapRef.current) {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+        mapRef.current.flyTo({
+          center: [longitude, latitude],
+          essential: true,
+          zoom: 17,
+        });
+      }
+    }
+  };
+  //#endregion
+
+
+  const updateArea = useCallback(() => {
+    if (drawRef.current) {
+      const data = drawRef.current.getAll();
+      const polygon = data.features[0];
+
+      if (polygon) {
+        const area = turf.area(polygon);
+        setPolygonArea(area);
+        setCurrentBoundary(polygon);
+    
+        if (equipmentDrawingEnabled && selectedEquipment) {
+          setDrawnEquipment((prev) => [
+            ...prev,
+            { equipment: selectedEquipment, polygon },
+          ]);
         }
-    };
+      } else {
+        setPolygonArea(null);
+        setCurrentBoundary(null);
+      }
+    }
+  }, [equipmentDrawingEnabled, selectedEquipment]);
 
-
-    const updateArea = useCallback(() => {
-        if (drawRef.current) {
-            const data = drawRef.current.getAll();
-            const polygon = data.features[0];
+  const handlePointPlacement = useCallback((e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+    if (pointPlacementMode && mapRef.current) {
+      const coordinates = e.lngLat;
+      
+      const newPoint: GeoJSON.Feature = {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [coordinates.lng, coordinates.lat]
+        },
+        properties: {}
+      };
   
-            if (polygon) {
-                const area = turf.area(polygon);
-                setPolygonArea(area);
-                setCurrentBoundary(polygon);
+      setPoints(prevPoints => [...prevPoints, newPoint]);
   
-                if (equipmentDrawingEnabled && selectedEquipment) {
-                    setDrawnEquipment(prev => [...prev, { equipment: selectedEquipment, polygon }]);
-                    drawRef.current.deleteAll();
-                }
-            } else {
-                setPolygonArea(null);
-                setCurrentBoundary(null);
-            }
-        }
-      }, [equipmentDrawingEnabled, selectedEquipment]);
+      // Add the new point to the map
+      if (mapRef.current.getSource('placed-points')) {
+        (mapRef.current.getSource('placed-points') as mapboxgl.GeoJSONSource).setData({
+          type: 'FeatureCollection',
+          features: [...points, newPoint]
+        });
+      }
+    }
+  }, [pointPlacementMode, points]);
 
-      const confirmBoundary = () => {
-        if (currentBoundary) {
-            setIsBoundaryConfirmed(true);
-            if (onBoundaryChange) {
-                onBoundaryChange(currentBoundary);
-            }
-        }
+  // confirm the drawn boundary
+  const confirmBoundary = () => {
+    if (currentBoundary) {
+      setIsBoundaryConfirmed(true);
+      if (onBoundaryChange) {
+        onBoundaryChange(currentBoundary);
+      }
+    }
+  };
+
+  // confirm the drawn equipment
+  const confirmEquipment = () => {
+    setIsEquipmentConfirmed(true);
+    if (onEquipmentConfirm) {
+      onEquipmentConfirm(drawnEquipment);
+    }
+  };
+
+
+  useEffect(() => {
+    if (mapRef.current && drawRef.current) {
+      mapRef.current.on('draw.create', updateArea);
+      mapRef.current.on('draw.delete', updateArea);
+      mapRef.current.on('draw.update', updateArea);
+    }
+  
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off('draw.create', updateArea);
+        mapRef.current.off('draw.delete', updateArea);
+        mapRef.current.off('draw.update', updateArea);
+      }
     };
-
-    const confirmEquipment = () => {
-        setIsEquipmentConfirmed(true);
-        if (onEquipmentConfirm) {
-            onEquipmentConfirm(drawnEquipment);
-        }
-    };
-
-
+  }, [mapRef, drawRef, updateArea]);
 
     useEffect(() => {
         if (mapContainerRef.current) {
@@ -152,114 +227,216 @@ const Map: React.FC<MapProps> = ({
                 compact: true
             }), 'bottom-right');
 
+            //#region Draw
+            const drawStyles = [
+              // Styles for barriers (blue)
+              {
+                'id': 'gl-draw-polygon-fill-inactive',
+                'type': 'fill',
+                'filter': ['all', ['==', '$type', 'Polygon']],
+                'paint': {
+                  'fill-color': '#3bb2d0',
+                  'fill-outline-color': '#3bb2d0',
+                  'fill-opacity': 0.1
+                }
+              },
+              {
+                'id': 'gl-draw-polygon-stroke-inactive',
+                'type': 'line',
+                'filter': ['all', ['==', '$type', 'Polygon']],
+                'paint': {
+                  'line-color': '#3bb2d0',
+                  'line-width': 2
+                }
+              },
+              // Styles for equipment (red)
+              {
+                'id': 'gl-draw-polygon-fill-active',
+                'type': 'fill',
+                'filter': ['all', ['==', '$type', 'Polygon']],
+                'paint': {
+                  'fill-color': '#ff0000',
+                  'fill-outline-color': '#ff0000',
+                  'fill-opacity': 0.1
+                }
+              },
+              {
+                'id': 'gl-draw-polygon-stroke-active',
+                'type': 'line',
+                'filter': ['all', ['==', '$type', 'Polygon']],
+                'paint': {
+                  'line-color': '#ff0000',
+                  'line-width': 2
+                }
+              },
+              // Additional styles for active drawing state
+              {
+                'id': 'gl-draw-polygon-and-line-vertex-active',
+                'type': 'circle',
+                'filter': ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                'paint': {
+                  'circle-radius': 5,
+                  'circle-color': '#fff'
+                }
+              },
+              {
+                'id': 'gl-draw-polygon-and-line-midpoint-active',
+                'type': 'circle',
+                'filter': ['all', ['==', 'meta', 'midpoint'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+                'paint': {
+                  'circle-radius': 3,
+                  'circle-color': '#fbb03b'
+                }
+              }
+            ];
+
             map.on('load', () => {
-                if (drawingEnabled || equipmentDrawingEnabled) {
+
                     const draw = new MapboxDraw({
                         displayControlsDefault: false,
                         controls: {
                             polygon: false,
                             trash: false
-                        }
+                        },
+                        userProperties: true,
+                        styles: drawStyles
                     });
 
-                    map.addControl(draw);
+                    map.addControl(draw as unknown as mapboxgl.IControl);
                     drawRef.current = draw;
+                //#endregion
 
-                    if (initialBoundary) {
-                        draw.add(initialBoundary);
-                        updateArea();
-                    }
 
-                    map.on('draw.create', updateArea);
-                    map.on('draw.update', updateArea);
-                    map.on('draw.delete', updateArea);
-                }
-
-                // Add a source for the points
-                map.addSource('points', {
-                    type: 'geojson',
-                    data: {
-                        type: 'FeatureCollection',
-                        features: [
-                            {
-                                type: 'Feature',
-                                geometry: {
-                                    type: 'Point',
-                                    coordinates: [-102.099118, 31.972980]
-                                },
-                                properties: {}
-                            },
-                            {
-                              type: 'Feature',
-                              geometry: {
-                                  type: 'Point',
-                                  coordinates: [-102.099118, 31.5]
-                              },
-                              properties: {}
-                          },
-                            // Add more points here
-                        ]
-                    },
-                    cluster: true,
-                    clusterMaxZoom: 14, // Max zoom to cluster points on
-                    clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
+                map.addSource('placed-points', {
+                  type: 'geojson',
+                  data: {
+                    type: 'FeatureCollection',
+                    features: []
+                  }
                 });
-
-                // Add a layer for the clusters
+              
                 map.addLayer({
-                    id: 'clusters',
-                    type: 'circle',
-                    source: 'points',
-                    filter: ['has', 'point_count'],
-                    paint: {
-                        'circle-color': [
-                            'step',
-                            ['get', 'point_count'],
-                            '#51bbd6',
-                            100,
-                            '#f1f075',
-                            750,
-                            '#f28cb1'
-                        ],
-                        'circle-radius': [
-                            'step',
-                            ['get', 'point_count'],
-                            20,
-                            100,
-                            30,
-                            750,
-                            40
-                        ]
-                    }
+                  id: 'placed-points',
+                  type: 'circle',
+                  source: 'placed-points',
+                  paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#00ff00'
+                  }
                 });
+                
+                // Add a source for the markers
+        map.addSource('markers', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [
+              { type: 'Feature', geometry: { type: 'Point', coordinates: [-102.099118, 31.97298] }, properties: { id: 1 } },
+              { type: 'Feature', geometry: { type: 'Point', coordinates: [-102.099118, 31.5] }, properties: { id: 2 } },
+            ]
+          },
+          cluster: true,
+          clusterMaxZoom: 14,
+          clusterRadius: 50
+        });
 
-                // Add a layer for the cluster count
-                map.addLayer({
-                    id: 'cluster-count',
-                    type: 'symbol',
-                    source: 'points',
-                    filter: ['has', 'point_count'],
-                    layout: {
-                        'text-field': '{point_count_abbreviated}',
-                        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                        'text-size': 12
-                    }
-                });
+        // Add a layer for the clusters
+        map.addLayer({
+          id: 'clusters',
+          type: 'circle',
+          source: 'markers',
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': [
+              'step',
+              ['get', 'point_count'],
+              '#51bbd6',
+              100,
+              '#f1f075',
+              750,
+              '#f28cb1'
+            ],
+            'circle-radius': [
+              'step',
+              ['get', 'point_count'],
+              20,
+              100,
+              30,
+              750,
+              40
+            ]
+          }
+        });
 
-                // Add a layer for the unclustered points
-                map.addLayer({
-                    id: 'unclustered-point',
-                    type: 'circle',
-                    source: 'points',
-                    filter: ['!', ['has', 'point_count']],
-                    paint: {
-                        'circle-color': '#11b4da',
-                        'circle-radius': 6,
-                        'circle-stroke-width': 1,
-                        'circle-stroke-color': '#fff'
-                    }
-                });
-            });
+        // Add a layer for the cluster count
+        map.addLayer({
+          id: 'cluster-count',
+          type: 'symbol',
+          source: 'markers',
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': '{point_count_abbreviated}',
+            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 12
+          }
+        });
+
+        // Add a layer for unclustered points
+        map.addLayer({
+          id: 'unclustered-point',
+          type: 'circle',
+          source: 'markers',
+          filter: ['!', ['has', 'point_count']],
+          paint: {
+            'circle-color': '#11b4da',
+            'circle-radius': 6,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#fff'
+          }
+        });
+
+        // Inspect a cluster on click
+        map.on('click', 'clusters', (e) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+          const clusterId = features[0].properties?.cluster_id;
+          (map.getSource('markers') as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+            clusterId,
+            (err, zoom) => {
+              if (err) return;
+
+              map.easeTo({
+                center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
+                zoom: zoom
+              });
+            }
+          );
+        });
+
+        // When a click event occurs on a feature in the unclustered-point layer, zoom in
+        map.on('click', 'unclustered-point', (e) => {
+          const coordinates = (e.features?.[0].geometry as GeoJSON.Point).coordinates as [number, number];
+          map.flyTo({
+            center: coordinates,
+            zoom: 14,
+            duration: 2000
+          });
+        });
+
+        // Change the cursor to a pointer when hovering over a cluster or point
+        map.on('mouseenter', 'clusters', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'clusters', () => {
+          map.getCanvas().style.cursor = '';
+        });
+
+        map.on('mouseenter', 'unclustered-point', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'unclustered-point', () => {
+          map.getCanvas().style.cursor = '';
+        });
+      });
 
             mapRef.current = map;
 
@@ -267,19 +444,34 @@ const Map: React.FC<MapProps> = ({
                 map.remove();
             }
         }
-    }, [state, drawingEnabled, equipmentDrawingEnabled, initialBoundary, updateArea]);
+    }, [state]);
+
+    useEffect(() => {
+      if (mapRef.current) {
+        mapRef.current.on('click', handlePointPlacement);
+      }
+    
+      return () => {
+        if (mapRef.current) {
+          mapRef.current.off('click', handlePointPlacement);
+        }
+      };
+    }, [handlePointPlacement, mapRef]);
 
 
     const handleEquipmentSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
       const selected = equipmentTypes.find(eq => eq.id === event.target.value);
       setSelectedEquipment(selected || null);
+      if (drawRef.current && selected) {
+        drawRef.current.changeMode('draw_polygon', { userCustom: true });
+      }
     };
 
     const handleDrawPolygon = () => {
-        if (drawRef.current) {
-          drawRef.current.changeMode('draw_polygon');
-        }
-      };
+      if (drawRef.current) {
+        drawRef.current.changeMode('draw_polygon', { userCustom: false });
+      }
+    };
   
       const handleDeletePolygon = () => {
         if (drawRef.current) {
@@ -291,29 +483,34 @@ const Map: React.FC<MapProps> = ({
         <div className="w-full h-full relative">
           <div className="absolute top-0 bottom-0 w-full h-full left-0" ref={mapContainerRef}>
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="w-40">
-                    Actions <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={satView}>
-                    Change view
-                  </DropdownMenuItem>
-                  {searchEnabled && (
-                    <DropdownMenuItem onClick={searchLocation}>
-                      Search Location
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <ControlsDropdown
+          mapStyles={mapStyles}
+          changeMapStyle={changeMapStyle}
+          searchEnabled={searchEnabled}
+          drawingEnabled={drawingEnabled}
+          equipmentDrawingEnabled={equipmentDrawingEnabled}
+          lat={lat}
+          lng={lng}
+          setLat={setLat}
+          setLng={setLng}
+          searchLocation={searchLocation}
+          drawPolygon={handleDrawPolygon}
+          deletePolygon={handleDeletePolygon}
+          equipmentTypes={equipmentTypes}
+          setSelectedEquipment={setSelectedEquipment}
+          confirmBoundary={confirmBoundary}
+          confirmEquipment={confirmEquipment}
+          isBoundaryConfirmed={isBoundaryConfirmed}
+          isEquipmentConfirmed={isEquipmentConfirmed}
+          currentBoundary={!!currentBoundary}
+          drawnEquipmentLength={drawnEquipment.length}
+        />
 
               {(drawingEnabled || equipmentDrawingEnabled) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" className="w-40">
-                      Drawing Tools <ChevronDown className="ml-2 h-4 w-4" />
+                      Barrier <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -329,22 +526,22 @@ const Map: React.FC<MapProps> = ({
                 </DropdownMenu>
               )}
 
-              {equipmentDrawingEnabled && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" className="w-40">
-                      Select Equipment <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {equipmentTypes.map(eq => (
-                      <DropdownMenuItem key={eq.id} onSelect={() => setSelectedEquipment(eq)}>
-                        {eq.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+{equipmentDrawingEnabled && (
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="secondary" className="w-40">
+                Select Equipment <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+            {equipmentTypes.map(eq => (
+                <DropdownMenuItem key={eq.id} onSelect={() => handleEquipmentSelect({ target: { value: eq.id } } as React.ChangeEvent<HTMLSelectElement>)}>
+                    {eq.name}
+                </DropdownMenuItem>
+            ))}
+        </DropdownMenuContent>
+    </DropdownMenu>
+)}
               
               {selectedEquipment && (
                 <div className="bg-white p-2 rounded shadow">
@@ -352,24 +549,24 @@ const Map: React.FC<MapProps> = ({
                 </div>
               )}
 
-              {drawingEnabled && !isBoundaryConfirmed && currentBoundary && (
-                <Button onClick={confirmBoundary} className="w-40">
-                  <Check className="mr-2 h-4 w-4" /> Confirm Boundary
-                </Button>
-              )}
+              {sensorEnabled && (
 
-              {equipmentDrawingEnabled && drawnEquipment.length > 0 && !isEquipmentConfirmed && (
-                <Button onClick={confirmEquipment} className="w-40">
-                  <Check className="mr-2 h-4 w-4" /> Confirm Equipment
-                </Button>
+                    <>
+                    <Button 
+                      variant="secondary" 
+                      className="w-40"
+                      onClick={() => setPointPlacementMode(!pointPlacementMode)}
+                    >
+                      {pointPlacementMode ? 'Finish Adding Sensors' : 'Add Sensor'}
+                    </Button> 
+                    {points.length > 0 && (
+                      <div className="bg-white p-2 rounded shadow mt-2">
+                        <p className="text-sm font-medium">Sensors added: {points.length}</p>
+                      </div>
+                    )}
+                    </>
               )}
             </div>
-    
-            {polygonArea !== null && (
-              <div className="absolute bottom-4 left-4 m-2 p-2 bg-white rounded shadow">
-                <p className="text-sm font-medium">Area: {polygonArea.toFixed(2)} m²</p>
-              </div>
-            )}
 
             {drawnEquipment.length > 0 && (
               <div className="absolute bottom-4 right-4 m-2 p-4 bg-white rounded shadow overflow-auto max-h-[50%] max-w-[300px]">
@@ -386,7 +583,6 @@ const Map: React.FC<MapProps> = ({
                             : `${item.equipment.sourceHeight} m`
                         }</li>
                         <li>Emission Source: {item.equipment.isEmissionSource ? 'Yes' : 'No'}</li>
-                        <li>Area: {turf.area(item.polygon).toFixed(2)} m²</li>
                       </ul>
                     </li>
                   ))}

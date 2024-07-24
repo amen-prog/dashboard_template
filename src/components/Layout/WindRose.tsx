@@ -28,7 +28,6 @@ const WindRose: React.FC<WindRoseProps> = ({ windData }) => {
       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={processedData}>
         <PolarGrid gridType="polygon" stroke="#ccc" strokeDasharray="3 3" />
         <PolarAngleAxis dataKey="direction" stroke="#333" />
-        <PolarRadiusAxis angle={30} domain={[0, 'auto']} stroke="#333" />
         <Radar name="Avg Wind Speed" dataKey="avgSpeed" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
         <Radar name="Avg Wind Gust" dataKey="avgGust" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
         <Legend />
@@ -38,7 +37,7 @@ const WindRose: React.FC<WindRoseProps> = ({ windData }) => {
 };
 
 const processDataForWindRose = (windData: ProcessedWindData[]): ChartWindData[] => {
-  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   const directionData: DirectionData[] = directions.map(dir => ({
     direction: dir,
     speeds: [],
@@ -46,7 +45,7 @@ const processDataForWindRose = (windData: ProcessedWindData[]): ChartWindData[] 
   }));
 
   windData.forEach(data => {
-    const index = Math.floor(((data.direction + 11.25) % 360) / 22.5);
+    const index = Math.floor(((data.direction + 11.25) % 360) / 45);
     directionData[index].speeds.push(data.speed);
     directionData[index].gusts.push(data.gust);
   });

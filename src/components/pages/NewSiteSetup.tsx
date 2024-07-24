@@ -12,12 +12,7 @@ import useSiteSetup from '../NewSiteSetup/useSiteSetup';
 import StepIndicator from '../NewSiteSetup/StepIndicator';
 
 const steps = [
-  { title: "Load Site Imagery", component: Step1Map },
-  { title: "Define Site Boundaries", component: Step2DefineBoundaries },
-  { title: "Define Site Equipment", component: Step3DefineEquipment },
   { title: "Wind Data", component: Step4WindData },
-  { title: "Sensor Placement", component: Step5SensorPlacement },
-  { title: "Export Configuration", component: Step6ExportConfiguration },
 ];
 
 const NewSiteSetup: React.FC = () => {
@@ -36,24 +31,22 @@ const NewSiteSetup: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">New Site Setup</h1>
-      <StepIndicator steps={steps.map(step => step.title)} currentStep={currentStep} />
       <Card>
         <CardHeader>
-          <CardTitle>{steps[currentStep].title}</CardTitle>
+          <CardTitle>New Site Setup</CardTitle>
         </CardHeader>
         <CardContent>
           <CurrentStepComponent  />
         </CardContent>
       </Card>
-      <div className="mt-6 flex justify-between">
+      {/* <div className="mt-6 flex justify-between">
         <Button onClick={handlePrevious} disabled={currentStep === 0}>
           Previous
         </Button>
         <Button onClick={handleNext} disabled={currentStep === steps.length - 1}>
           Next
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 };

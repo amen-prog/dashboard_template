@@ -33,7 +33,7 @@ const Step4WindData: React.FC = () => {
     <Card className="w-full">
       <CardContent className="space-y-4">
         <div className="w-full h-96">
-          <Map drawingEnabled={false} searchEnabled={false} equipmentDrawingEnabled={false}/>
+          <Map drawingEnabled={true} searchEnabled={true} equipmentDrawingEnabled={true} sensorEnabled={true}/>
         </div>
         <div className="flex justify-end space-x-4">
           <Input

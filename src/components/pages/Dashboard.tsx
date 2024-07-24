@@ -86,7 +86,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
         <Card className="col-span-1">
           <CardContent className="p-0">
-            <Map drawingEnabled={false} searchEnabled={true} equipmentDrawingEnabled={false}/>
+            <Map drawingEnabled={false} searchEnabled={true} equipmentDrawingEnabled={false} sensorEnabled={false}/>
           </CardContent>
         </Card>
         <div className="col-span-1 space-y-4">
