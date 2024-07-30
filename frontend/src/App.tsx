@@ -1,8 +1,6 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Dashboard from '@/components/pages/Dashboard'
 import { ThemeProvider } from '@/components/dark-mode/theme-provider'
-import Alarms from '@/components/pages/Alarms'
-import Assets from '@/components/pages/Assets'
 import NewSiteSetup from '@/components/pages/NewSiteSetup';
 import Header from '@/components/Layout/Header';
 
@@ -16,8 +14,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/new-site" element={<NewSiteSetup />} />
-                  <Route path="/alarms" element={<Alarms />} />
-          <Route path="/assets" element={<Assets />} />
         {/* Add other routes as needed */}
       </Routes>
     </main>

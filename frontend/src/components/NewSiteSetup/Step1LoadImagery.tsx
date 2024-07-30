@@ -16,12 +16,12 @@ interface Step1Props {
   onRadioChange: (value: string) => void;
 }
 
-const Step1LoadImagery: React.FC<Step1Props> = ({ siteData, onInputChange, onFileUpload, onRadioChange }) => {
+const Step1LoadImagery: React.FC<Step1Props> = ({ onFileUpload, onRadioChange }) => {
   return (
     <div className="space-y-6">
       <div>
         <Label htmlFor="siteName">Enter Name of Site</Label>
-        <Input id="siteName" name="siteName" value={siteData.siteName} onChange={onInputChange} />
+        <Input id="siteName" name="siteName" />
       </div>
       <div>
         <Label htmlFor="imageUpload">Upload Image</Label>

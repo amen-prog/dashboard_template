@@ -1,5 +1,6 @@
 // src/App.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
 import mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
@@ -26,6 +27,7 @@ interface EquipmentType {
     isEmissionSource: boolean;
   }
 
+//#region Equipment 
 const equipmentTypes: EquipmentType[] = [
   { id: '1', name: 'High Pressure Flare', sourceHeight: 10, isEmissionSource: true },
   { id: '2', name: 'Low Pressure Flare', sourceHeight: 5, isEmissionSource: true },
@@ -43,6 +45,10 @@ const equipmentTypes: EquipmentType[] = [
   { id: '14', name: 'Other', sourceHeight: 3, isEmissionSource: true },
 ];
 
+//#endregion 
+
+
+//#region MapProps
 interface MapProps {   
     drawingEnabled: boolean;
     searchEnabled: boolean;
@@ -71,6 +77,8 @@ const Map: React.FC<MapProps> = ({
     onEquipmentConfirm,
     initialBoundary,
 }) => {
+
+  //#region Const States
   const [mapStyle, setMapStyle] = useState(mapStyles[0].url);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -90,6 +98,7 @@ const Map: React.FC<MapProps> = ({
     const [points, setPoints] = useState<GeoJSON.Feature[]>([]);
     const [pointPlacementMode, setPointPlacementMode] = useState(false);
 
+    //#region Functions
     const satView = () => {
         setState(!state);
         if (mapRef.current) {
@@ -114,6 +123,7 @@ const Map: React.FC<MapProps> = ({
     }
   };
 
+  // Search location using lat & lng
     const searchLocation = () => {
     if (mapRef.current) {
       const latitude = parseFloat(lat);
@@ -130,6 +140,7 @@ const Map: React.FC<MapProps> = ({
   //#endregion
 
 
+  // Update area for Equipment Display
   const updateArea = useCallback(() => {
     if (drawRef.current) {
       const data = drawRef.current.getAll();
@@ -153,6 +164,8 @@ const Map: React.FC<MapProps> = ({
     }
   }, [equipmentDrawingEnabled, selectedEquipment]);
 
+
+  // Place Points for sensors on map
   const handlePointPlacement = useCallback((e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
     if (pointPlacementMode && mapRef.current) {
       const coordinates = e.lngLat;
@@ -196,7 +209,7 @@ const Map: React.FC<MapProps> = ({
     }
   };
 
-
+//#region useEffect
   useEffect(() => {
     if (mapRef.current && drawRef.current) {
       mapRef.current.on('draw.create', updateArea);
@@ -290,6 +303,7 @@ const Map: React.FC<MapProps> = ({
               }
             ];
 
+            //#region Map on Event
             map.on('load', () => {
 
                     const draw = new MapboxDraw({
@@ -459,6 +473,7 @@ const Map: React.FC<MapProps> = ({
     }, [handlePointPlacement, mapRef]);
 
 
+    //#region Polygon Func
     const handleEquipmentSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
       const selected = equipmentTypes.find(eq => eq.id === event.target.value);
       setSelectedEquipment(selected || null);
@@ -479,6 +494,7 @@ const Map: React.FC<MapProps> = ({
         }
       };
 
+      //#region HTML 
       return (
         <div className="w-full h-full relative">
           <div className="absolute top-0 bottom-0 w-full h-full left-0" ref={mapContainerRef}>
@@ -505,7 +521,7 @@ const Map: React.FC<MapProps> = ({
           currentBoundary={!!currentBoundary}
           drawnEquipmentLength={drawnEquipment.length}
         />
-
+              {/* Barrier */}
               {(drawingEnabled || equipmentDrawingEnabled) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -526,6 +542,7 @@ const Map: React.FC<MapProps> = ({
                 </DropdownMenu>
               )}
 
+{/* Draw Equipment */}
 {equipmentDrawingEnabled && (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -549,6 +566,7 @@ const Map: React.FC<MapProps> = ({
                 </div>
               )}
 
+              {/* Sensor Placement */}
               {sensorEnabled && (
 
                     <>
@@ -567,7 +585,8 @@ const Map: React.FC<MapProps> = ({
                     </>
               )}
             </div>
-
+            
+            {/* Display Equipment  */}
             {drawnEquipment.length > 0 && (
               <div className="absolute bottom-4 right-4 m-2 p-4 bg-white rounded shadow overflow-auto max-h-[50%] max-w-[300px]">
                 <h3 className="font-bold mb-2">Drawn Equipment:</h3>

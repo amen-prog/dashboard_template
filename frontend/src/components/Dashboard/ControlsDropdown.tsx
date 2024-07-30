@@ -1,4 +1,6 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState, forwardRef, useCallback  } from 'react';
+import axios from 'axios';
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -86,6 +88,25 @@ const ControlsDropdown: React.FC<ControlsDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showLatLng, setShowLatLng] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null);
+  const [testMessage, setTestMessage] = useState('');
+
+  const testPostRequest = useCallback(async () => {
+    try {
+      const response = await axios.post('http://localhost:5000/test-post', { message: 'Hello from frontend' });
+      setTestMessage(`POST successful: ${response.data.message}`);
+    } catch (error) {
+      setTestMessage('POST failed: ' + error.message);
+    }
+  }, []);
+  
+  const testGetRequest = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/test-get');
+      setTestMessage(`GET successful: ${response.data.message}`);
+    } catch (error) {
+      setTestMessage('GET failed: ' + error.message);
+    }
+  }, []);
 
   const handleButtonClick = (action: () => void, buttonName: string) => {
     action();
@@ -272,6 +293,42 @@ const ControlsDropdown: React.FC<ControlsDropdownProps> = ({
                   <p>Confirm Equipment</p>
                 </TooltipContent>
               </Tooltip>
+            )}
+
+            {/* Add these buttons to the dropdown menu content */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant={activeButton === 'testPost' ? 'secondary' : 'ghost'}
+                  className="w-8 h-8 p-0"
+                  onClick={() => handleButtonClick(testPostRequest, 'testPost')}
+                >
+                  POST
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center" sideOffset={5}>
+                <p>Test POST Request</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant={activeButton === 'testGet' ? 'secondary' : 'ghost'}
+                  className="w-8 h-8 p-0"
+                  onClick={() => handleButtonClick(testGetRequest, 'testGet')}
+                >
+                  GET
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center" sideOffset={5}>
+                <p>Test GET Request</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Add this to display the test message */}
+            {testMessage && (
+              <div className="p-1 text-xs">{testMessage}</div>
             )}
           </div>
         </DropdownMenuContent>
