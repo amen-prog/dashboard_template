@@ -5,7 +5,7 @@ from config import Config
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
     from app import routes
     app.register_blueprint(routes.main)

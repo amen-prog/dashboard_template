@@ -17,6 +17,7 @@ import {
     DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { ChevronDown, Pencil, Trash2, Check} from 'lucide-react';
+import { polygon } from 'leaflet';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWFobW91ZGFsaTEiLCJhIjoiY2x0cW1rc3dhMDd4dTJpbW8wemp0ZHRyMyJ9.OFxJ3NcR8gGBVzlgVZ_ADw';
 
@@ -93,10 +94,12 @@ const Map: React.FC<MapProps> = ({
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType | null>(null);
     const [drawnEquipment, setDrawnEquipment] = useState<Array<{ equipment: EquipmentType, polygon: GeoJSON.Feature }>>([]);
     const [currentBoundary, setCurrentBoundary] = useState<GeoJSON.Feature | null>(null);
+    const [equipmentBoundary, setEquipmentBoundary] = useState<GeoJSON.Feature | null>(null);
     const [isBoundaryConfirmed, setIsBoundaryConfirmed] = useState(false);
     const [isEquipmentConfirmed, setIsEquipmentConfirmed] = useState(false);
     const [points, setPoints] = useState<GeoJSON.Feature[]>([]);
     const [pointPlacementMode, setPointPlacementMode] = useState(false);
+    const [polygonDrawn, setPolygonDrawn] = useState(false);
 
     //#region Functions
     const satView = () => {
@@ -142,27 +145,32 @@ const Map: React.FC<MapProps> = ({
 
   // Update area for Equipment Display
   const updateArea = useCallback(() => {
+    console.log("update area")
     if (drawRef.current) {
       const data = drawRef.current.getAll();
       const polygon = data.features[0];
+      console.log("polygon: ", polygon )
 
       if (polygon) {
         const area = turf.area(polygon);
         setPolygonArea(area);
         setCurrentBoundary(polygon);
+        setEquipmentBoundary(polygon);
+        setPolygonDrawn(true); 
     
         if (equipmentDrawingEnabled && selectedEquipment) {
           setDrawnEquipment((prev) => [
             ...prev,
             { equipment: selectedEquipment, polygon },
           ]);
-        }
+        } 
       } else {
         setPolygonArea(null);
         setCurrentBoundary(null);
+        setPolygonDrawn(false);
       }
     }
-  }, [equipmentDrawingEnabled, selectedEquipment]);
+  }, [equipmentDrawingEnabled, selectedEquipment, polygonDrawn]);
 
 
   // Place Points for sensors on map
@@ -191,41 +199,63 @@ const Map: React.FC<MapProps> = ({
     }
   }, [pointPlacementMode, points]);
 
+
+  // Send Polygon to the Backend
+  const sendPolygonToBackend = async (polygon: GeoJSON.Feature) => {
+    try {
+      const response = await axios.post('http://localhost:5000/polygon', {
+        polygon: polygon
+      });
+      console.log('Polygon sent to backend:', response.data);
+    } catch (error) {
+      console.error('Error sending polygon to backend:', error);
+    }
+  };
+
+  // Send Equipment Polygon to the Backend
+  const sendEquipmentPolygonToBackend = async (equipmentData: Array<{ equipment: EquipmentType, polygon: GeoJSON.Feature }>) => {
+    try {
+      const response = await axios.post('http://localhost:5000/equipment', {
+        equipmentData: equipmentData.map(item => ({
+          equipment: {
+            id: item.equipment.id,
+            name: item.equipment.name,
+            sourceHeight: item.equipment.sourceHeight,
+            isEmissionSource: item.equipment.isEmissionSource
+          },
+          polygon: item.polygon
+        }))
+      });
+      console.log('Equipment data sent to backend:', response.data);
+    } catch (error) {
+      console.error('Error sending equipment data to backend:', error);
+    }
+  };
+
   // confirm the drawn boundary
   const confirmBoundary = () => {
-    if (currentBoundary) {
+    if (currentBoundary){
       setIsBoundaryConfirmed(true);
       if (onBoundaryChange) {
         onBoundaryChange(currentBoundary);
       }
-    }
+      // Send the polygon to the backend
+      sendPolygonToBackend(currentBoundary);
+      }
   };
 
   // confirm the drawn equipment
   const confirmEquipment = () => {
-    setIsEquipmentConfirmed(true);
-    if (onEquipmentConfirm) {
-      onEquipmentConfirm(drawnEquipment);
+    if (drawnEquipment.length > 0) {
+      setIsEquipmentConfirmed(true);
+      if (onEquipmentConfirm) {
+        onEquipmentConfirm(drawnEquipment);
+      }
+      sendEquipmentPolygonToBackend(drawnEquipment);
     }
   };
 
 //#region useEffect
-  useEffect(() => {
-    if (mapRef.current && drawRef.current) {
-      mapRef.current.on('draw.create', updateArea);
-      mapRef.current.on('draw.delete', updateArea);
-      mapRef.current.on('draw.update', updateArea);
-    }
-  
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.off('draw.create', updateArea);
-        mapRef.current.off('draw.delete', updateArea);
-        mapRef.current.off('draw.update', updateArea);
-      }
-    };
-  }, [mapRef, drawRef, updateArea]);
-
     useEffect(() => {
         if (mapContainerRef.current) {
             const map = new mapboxgl.Map({
@@ -461,6 +491,22 @@ const Map: React.FC<MapProps> = ({
     }, [state]);
 
     useEffect(() => {
+      if (mapRef.current && drawRef.current) {
+        mapRef.current.on('draw.create', updateArea);
+        mapRef.current.on('draw.delete', updateArea);
+        mapRef.current.on('draw.update', updateArea);
+      }
+    
+      return () => {
+        if (mapRef.current) {
+          mapRef.current.off('draw.create', updateArea);
+          mapRef.current.off('draw.delete', updateArea);
+          mapRef.current.off('draw.update', updateArea);
+        }
+      };
+    }, [mapRef, drawRef, updateArea]);
+
+    useEffect(() => {
       if (mapRef.current) {
         mapRef.current.on('click', handlePointPlacement);
       }
@@ -483,8 +529,11 @@ const Map: React.FC<MapProps> = ({
     };
 
     const handleDrawPolygon = () => {
+      console.log("handleDrawPolygon called");
       if (drawRef.current) {
+        console.log("handleDrawPolygon called");
         drawRef.current.changeMode('draw_polygon', { userCustom: false });
+        setPolygonDrawn(true);
       }
     };
   
@@ -522,7 +571,7 @@ const Map: React.FC<MapProps> = ({
           drawnEquipmentLength={drawnEquipment.length}
         />
               {/* Barrier */}
-              {(drawingEnabled || equipmentDrawingEnabled) && (
+              {drawingEnabled && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" className="w-40">
@@ -559,6 +608,19 @@ const Map: React.FC<MapProps> = ({
         </DropdownMenuContent>
     </DropdownMenu>
 )}
+
+{drawingEnabled && !isBoundaryConfirmed && currentBoundary && (
+                <Button onClick={confirmBoundary} className="w-40">
+                  <Check className="mr-2 h-4 w-4" /> Confirm Boundary
+                </Button>
+              )}
+
+{equipmentDrawingEnabled && drawnEquipment.length > 0 && !isEquipmentConfirmed && (
+                <Button onClick={confirmEquipment} className="w-40">
+                  <Check className="mr-2 h-4 w-4" /> Confirm Equipment
+                </Button>
+              )}
+
               
               {selectedEquipment && (
                 <div className="bg-white p-2 rounded shadow">

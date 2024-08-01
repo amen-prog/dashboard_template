@@ -32,28 +32,25 @@ const Step4WindData: React.FC = () => {
   return (
     <Card className="w-full">
       <CardContent className="space-y-4">
-        <div className="w-full h-96">
-          <Map drawingEnabled={true} searchEnabled={true} equipmentDrawingEnabled={true} sensorEnabled={true}/>
-        </div>
-        <div className="flex justify-end space-x-4">
-          <Input
-            type="text"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            placeholder="Enter Latitude"
-            className="w-40"
-          />
-          <Input
-            type="text"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            placeholder="Enter Longitude"
-            className="w-40"
-          />
-          <Button onClick={fetchWindData} disabled={loading}>
-            {loading ? 'Loading...' : 'Fetch Wind Data'}
-          </Button>
-        </div>
+      <div className="flex pt-6 space-x-4 items-center">
+        <Input
+          type="text"
+          value={lat}
+          onChange={(e) => setLat(e.target.value)}
+          placeholder="Enter Latitude"
+          className="w-40"
+        />
+        <Input
+          type="text"
+          value={lng}
+          onChange={(e) => setLng(e.target.value)}
+          placeholder="Enter Longitude"
+          className="w-40"
+        />
+        <Button onClick={fetchWindData} disabled={loading}>
+          {loading ? 'Loading...' : 'Fetch Wind Data'}
+        </Button>
+      </div>
         {error && <p className="text-red-500 text-right">{error}</p>}
         {windData.length > 0 && (
           <div className="w-full h-96">

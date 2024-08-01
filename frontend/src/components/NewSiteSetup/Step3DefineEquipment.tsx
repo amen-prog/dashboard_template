@@ -21,7 +21,7 @@ const Step3DefineEquipment: React.FC<Step3DefineEquipmentProps> = ({ boundary, o
         <div className="grid grid-cols-3 gap-4 w-full">
           <div className="col-span-3 w-full bg-secondary h-96 flex items-center justify-center">
             <Map 
-              drawingEnabled={true}
+              drawingEnabled={false}
               searchEnabled={false} 
               equipmentDrawingEnabled={true}
               initialBoundary={boundary}

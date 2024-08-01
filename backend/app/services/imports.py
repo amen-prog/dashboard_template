@@ -3,6 +3,7 @@
 import os
 import json
 import shutil
+import sys
 from osgeo import gdal, osr
 import rasterio as rio
 from rasterio.plot import show
